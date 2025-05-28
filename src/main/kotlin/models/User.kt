@@ -1,6 +1,4 @@
-// В файле src/main/kotlin/models/User.kt
-// Замените существующие модели на эти:
-
+// src/main/kotlin/models/User.kt
 package com.example.models
 
 import kotlinx.serialization.Serializable
@@ -10,7 +8,8 @@ data class User(
     val id: Int = 0,
     val login: String,
     val email: String,
-    val passwordHash: String = ""  // Не отправляем хэш пароля в ответах
+    val status: String = "Новичок в медитации 🧘‍♀️",
+    val passwordHash: String = ""
 )
 
 @Serializable
@@ -22,7 +21,7 @@ data class UserRegistrationRequest(
 
 @Serializable
 data class UserLoginRequest(
-    val email: String,  // ИЗМЕНЕНО: теперь явно email вместо login
+    val email: String,
     val password: String
 )
 
@@ -30,7 +29,8 @@ data class UserLoginRequest(
 data class UserResponse(
     val id: Int,
     val login: String,
-    val email: String
+    val email: String,
+    val status: String
 )
 
 @Serializable
@@ -38,5 +38,17 @@ data class AuthResponse(
     val success: Boolean,
     val message: String,
     val user: UserResponse? = null,
-    val token: String? = null  // Простой токен для демонстрации
+    val token: String? = null
+)
+
+@Serializable
+data class UpdateStatusRequest(
+    val status: String
+)
+
+@Serializable
+data class UpdateStatusResponse(
+    val success: Boolean,
+    val message: String,
+    val status: String? = null
 )

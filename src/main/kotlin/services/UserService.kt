@@ -1,3 +1,4 @@
+// src/main/kotlin/services/UserService.kt
 package com.example.services
 
 import com.example.models.*
@@ -20,7 +21,6 @@ object UserService {
     fun registerUser(request: UserRegistrationRequest): AuthResponse {
         return try {
             useConnection { connection ->
-                // Очищаем данные от лишних пробелов
                 val cleanLogin = request.login.trim()
                 val cleanEmail = request.email.trim()
                 val cleanPassword = request.password.trim()
@@ -30,7 +30,7 @@ object UserService {
                 println("Email: '$cleanEmail'")
                 println("Password length: ${cleanPassword.length}")
 
-                // Проверяем, существует ли пользователь с таким логином или email
+                // Проверяем, существует ли пользователь
                 val checkStatement = connection.prepareStatement(
                     "SELECT id FROM users WHERE login = ? OR email = ?"
                 )
@@ -44,32 +44,32 @@ object UserService {
                         message = "Пользователь с таким логином или email уже существует"
                     )
                 } else {
-                    // Создаем нового пользователя
+                    // Создаем нового пользователя с дефолтным статусом
                     val insertStatement = connection.prepareStatement(
-                        "INSERT INTO users (login, email, password_hash) VALUES (?, ?, ?)",
+                        "INSERT INTO users (login, email, password_hash, status) VALUES (?, ?, ?, ?)",
                         java.sql.Statement.RETURN_GENERATED_KEYS
                     )
 
                     val hashedPassword = hashPassword(cleanPassword)
-                    println("Hashed password: '$hashedPassword'")
+                    val defaultStatus = "Новичок в медитации 🧘‍♀️"
 
                     insertStatement.setString(1, cleanLogin)
                     insertStatement.setString(2, cleanEmail)
                     insertStatement.setString(3, hashedPassword)
+                    insertStatement.setString(4, defaultStatus)
 
                     val rowsAffected = insertStatement.executeUpdate()
-                    println("Rows affected: $rowsAffected")
 
                     if (rowsAffected > 0) {
                         val generatedKeys = insertStatement.generatedKeys
                         if (generatedKeys.next()) {
                             val userId = generatedKeys.getInt(1)
-                            println("Generated user ID: $userId")
 
                             val userResponse = UserResponse(
                                 id = userId,
                                 login = cleanLogin,
-                                email = cleanEmail
+                                email = cleanEmail,
+                                status = defaultStatus
                             )
 
                             AuthResponse(
@@ -96,7 +96,7 @@ object UserService {
     fun loginUser(request: UserLoginRequest): AuthResponse {
         return try {
             useConnection { connection ->
-                val cleanEmail = request.email.trim()  // ИЗМЕНЕНО: используем email поле
+                val cleanEmail = request.email.trim()
                 val cleanPassword = request.password.trim()
 
                 println("=== LOGIN DEBUG ===")
@@ -104,7 +104,7 @@ object UserService {
                 println("Password length: ${cleanPassword.length}")
 
                 val statement = connection.prepareStatement(
-                    "SELECT id, login, email, password_hash FROM users WHERE email = ?"
+                    "SELECT id, login, email, password_hash, status FROM users WHERE email = ?"
                 )
                 statement.setString(1, cleanEmail)
                 val resultSet = statement.executeQuery()
@@ -113,18 +113,13 @@ object UserService {
                     val storedPasswordHash = resultSet.getString("password_hash")
                     val inputPasswordHash = hashPassword(cleanPassword)
 
-                    println("Stored hash: '$storedPasswordHash'")
-                    println("Input hash:  '$inputPasswordHash'")
-                    println("Hashes match: ${storedPasswordHash == inputPasswordHash}")
-
                     if (storedPasswordHash == inputPasswordHash) {
                         val userResponse = UserResponse(
                             id = resultSet.getInt("id"),
                             login = resultSet.getString("login"),
-                            email = resultSet.getString("email")
+                            email = resultSet.getString("email"),
+                            status = resultSet.getString("status") ?: "Новичок в медитации 🧘‍♀️"
                         )
-
-                        println("Login successful for user: ${userResponse.email}")
 
                         AuthResponse(
                             success = true,
@@ -133,11 +128,9 @@ object UserService {
                             token = generateSimpleToken(resultSet.getInt("id"))
                         )
                     } else {
-                        println("Password mismatch for user: $cleanEmail")
                         AuthResponse(success = false, message = "Неверный пароль")
                     }
                 } else {
-                    println("User not found: $cleanEmail")
                     AuthResponse(success = false, message = "Пользователь с таким email не найден")
                 }
             }
@@ -154,7 +147,7 @@ object UserService {
             if (userId != null) {
                 useConnection { connection ->
                     val statement = connection.prepareStatement(
-                        "SELECT id, login, email FROM users WHERE id = ?"
+                        "SELECT id, login, email, status FROM users WHERE id = ?"
                     )
                     statement.setInt(1, userId)
                     val resultSet = statement.executeQuery()
@@ -163,7 +156,8 @@ object UserService {
                         UserResponse(
                             id = resultSet.getInt("id"),
                             login = resultSet.getString("login"),
-                            email = resultSet.getString("email")
+                            email = resultSet.getString("email"),
+                            status = resultSet.getString("status") ?: "Новичок в медитации 🧘‍♀️"
                         )
                     } else null
                 }
@@ -174,7 +168,57 @@ object UserService {
         }
     }
 
-    // Простой токен для демонстрации (в продакшене используйте JWT)
+    // НОВЫЙ МЕТОД: Обновление статуса пользователя
+    fun updateUserStatus(userId: Int, newStatus: String): UpdateStatusResponse {
+        return try {
+            val cleanStatus = newStatus.trim()
+
+            if (cleanStatus.isEmpty()) {
+                return UpdateStatusResponse(
+                    success = false,
+                    message = "Статус не может быть пустым"
+                )
+            }
+
+            if (cleanStatus.length > 255) {
+                return UpdateStatusResponse(
+                    success = false,
+                    message = "Статус не может быть длиннее 255 символов"
+                )
+            }
+
+            useConnection { connection ->
+                val statement = connection.prepareStatement(
+                    "UPDATE users SET status = ? WHERE id = ?"
+                )
+                statement.setString(1, cleanStatus)
+                statement.setInt(2, userId)
+
+                val rowsAffected = statement.executeUpdate()
+
+                if (rowsAffected > 0) {
+                    UpdateStatusResponse(
+                        success = true,
+                        message = "Статус успешно обновлен",
+                        status = cleanStatus
+                    )
+                } else {
+                    UpdateStatusResponse(
+                        success = false,
+                        message = "Пользователь не найден"
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            println("Update status error: ${e.message}")
+            UpdateStatusResponse(
+                success = false,
+                message = "Ошибка сервера: ${e.message}"
+            )
+        }
+    }
+
+    // Простой токен для демонстрации
     private fun generateSimpleToken(userId: Int): String {
         return "user_${userId}_${System.currentTimeMillis()}"
     }
@@ -190,7 +234,7 @@ object UserService {
         }
     }
 
-    // Методы для работы с избранным
+    // Методы для работы с избранным (без изменений)
     fun addToFavorites(userId: Int, exerciseId: Int): Boolean {
         return try {
             useConnection { connection ->
