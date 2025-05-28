@@ -1,0 +1,13 @@
+ktor:
+    application:
+        modules:
+            - com.example.ApplicationKt.module
+    deployment:
+        port: 8080
+        host: 0.0.0.0  # Важно! Слушаем на всех интерфейсах
+
+database:
+    jdbcUrl: "jdbc:mysql://localhost:3306/meditation_app"
+    username: "root"
+    password: "root"
+    driverClassName: "com.mysql.cj.jdbc.Driver"
