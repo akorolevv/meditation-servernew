@@ -1,3 +1,6 @@
+// В файле src/main/kotlin/models/User.kt
+// Замените существующие модели на эти:
+
 package com.example.models
 
 import kotlinx.serialization.Serializable
@@ -19,7 +22,7 @@ data class UserRegistrationRequest(
 
 @Serializable
 data class UserLoginRequest(
-    val login: String,
+    val email: String,  // ИЗМЕНЕНО: теперь явно email вместо login
     val password: String
 )
 

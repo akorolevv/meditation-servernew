@@ -96,17 +96,17 @@ object UserService {
     fun loginUser(request: UserLoginRequest): AuthResponse {
         return try {
             useConnection { connection ->
-                val cleanLogin = request.login.trim()
+                val cleanEmail = request.email.trim()  // ИЗМЕНЕНО: используем email поле
                 val cleanPassword = request.password.trim()
 
                 println("=== LOGIN DEBUG ===")
-                println("Login attempt: '$cleanLogin'")
+                println("Email attempt: '$cleanEmail'")
                 println("Password length: ${cleanPassword.length}")
 
                 val statement = connection.prepareStatement(
-                    "SELECT id, login, email, password_hash FROM users WHERE login = ?"
+                    "SELECT id, login, email, password_hash FROM users WHERE email = ?"
                 )
-                statement.setString(1, cleanLogin)
+                statement.setString(1, cleanEmail)
                 val resultSet = statement.executeQuery()
 
                 if (resultSet.next()) {
@@ -124,7 +124,7 @@ object UserService {
                             email = resultSet.getString("email")
                         )
 
-                        println("Login successful for user: ${userResponse.login}")
+                        println("Login successful for user: ${userResponse.email}")
 
                         AuthResponse(
                             success = true,
@@ -133,12 +133,12 @@ object UserService {
                             token = generateSimpleToken(resultSet.getInt("id"))
                         )
                     } else {
-                        println("Password mismatch for user: $cleanLogin")
+                        println("Password mismatch for user: $cleanEmail")
                         AuthResponse(success = false, message = "Неверный пароль")
                     }
                 } else {
-                    println("User not found: $cleanLogin")
-                    AuthResponse(success = false, message = "Пользователь не найден")
+                    println("User not found: $cleanEmail")
+                    AuthResponse(success = false, message = "Пользователь с таким email не найден")
                 }
             }
         } catch (e: Exception) {

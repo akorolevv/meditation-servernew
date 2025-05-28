@@ -49,10 +49,10 @@ fun Route.userRouting() {
             try {
                 val request = call.receive<UserLoginRequest>()
 
-                if (request.login.isBlank() || request.password.isBlank()) {
+                if (request.email.isBlank() || request.password.isBlank()) {  // ИЗМЕНЕНО: email вместо login
                     call.respond(
                         HttpStatusCode.BadRequest,
-                        AuthResponse(success = false, message = "Логин и пароль обязательны")
+                        AuthResponse(success = false, message = "Email и пароль обязательны")
                     )
                     return@post
                 }
