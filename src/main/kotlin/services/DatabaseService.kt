@@ -20,7 +20,8 @@ object DatabaseService {
         dataSource = HikariDataSource(config)
     }
 
-    private fun <T> useConnection(block: (Connection) -> T): T {
+    // Публичный метод для использования в других сервисах
+    fun <T> useConnection(block: (Connection) -> T): T {
         return dataSource.connection.use(block)
     }
 
@@ -69,10 +70,10 @@ object DatabaseService {
             bodyPart = getString("body_part"),
             target = getString("target"),
             equipment = getString("equipment"),
-            description = getString("description") ?: "",
+            description = getString("description"),
             difficulty = getString("difficulty") ?: "Начинающий",
             duration = getInt("duration"),
-            instructions = getString("instructions") ?: ""  // Добавляем
+            instructions = getString("instructions")
         )
     }
 }
